@@ -9,6 +9,8 @@ public class RouterNode {
 	private int[] costsnbr = new int[RouterSimulator.NUM_NODES];
 	private int nrNbr;
 	private int [][] nbrDistanceTable;
+	private RouterPacket packet;
+	
 
 	//--------------------------------------------------
 	public RouterNode(int ID, RouterSimulator sim, int[] costs) {
@@ -17,9 +19,10 @@ public class RouterNode {
 		myGUI = new GuiTextArea("  Output window for Router #"+ ID + "  ");
 		System.arraycopy(costs, 0, this.costsnbr, 0, RouterSimulator.NUM_NODES);
 		howManyNbr();
-		this.nbrDistanceTable = new int[this.nrNbr][RouterSimulator.NUM_NODES+1];
+		this.nbrDistanceTable = new int[this.nrNbr][RouterSimulator.NUM_NODES+1];		
 		initNbrArray();
 		this.printDistanceTable();
+		updateNbr();
 	}
 
 	//--------------------------------------------------
@@ -32,14 +35,44 @@ public class RouterNode {
 				break;
 			}
 		}
-		//printDistanceTable();
+		
+		if(updateRoute()){
+			//updateNbr();
+		}
 
+	}
+
+	public boolean updateRoute(){
+		
+		int cmp;
+		boolean update = false;
+
+		for(int i=0; i<nrNbr; i++){
+			for(int j=0; j<RouterSimulator.NUM_NODES; j++){
+				System.out.println("["+myID+"]"+"costs: " + costsnbr[i] + "+"+ nbrDistanceTable[i][j]);
+				cmp = costsnbr[i]+nbrDistanceTable[i][j];
+				if(cmp < costsnbr[j]){
+					System.out.println("["+myID+"]"+"Update: " + costsnbr[j] + " to " + cmp);
+					costsnbr[j] = cmp;
+					update = true;
+				}
+			}
+
+		}
+		return update;
 	}
 
 
 	//--------------------------------------------------
 	private void sendUpdate(RouterPacket pkt) {
 		sim.toLayer2(pkt);
+	}
+
+	private void updateNbr() {
+		for(int i=0; i<nrNbr; i++){
+			packet = new RouterPacket(myID,nbrDistanceTable[i][RouterSimulator.NUM_NODES],costsnbr);
+			sendUpdate(packet);
+		}
 	}
 
 
