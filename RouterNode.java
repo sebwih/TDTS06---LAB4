@@ -7,11 +7,29 @@ public class RouterNode {
 	private GuiTextArea myGUI;
 	private RouterSimulator sim;
 	private int[] costsnbr = new int[RouterSimulator.NUM_NODES];
-	private int[] routeNbr = new int[RouterSimulator.NUM_NODES];//Same functionality as the array above
+	private int[] routeNbr = new int[RouterSimulator.NUM_NODES]; //Same functionality as the array above
 	private int nrNbr;
 	private int [][] nbrDistanceTable;
 	private RouterPacket packet;
 	
+	/*
+	---------------------
+	nbrDistanceTable
+	---------------------
+	Two-dimentional array that contains the cost to each of the nodes neighbors. The rows contain the different neighbors and the columns the distances.
+	Each the indexes represents the node the distance corresponds to. The LAST index contains the neighbor nodes number tho!
+
+	Ex. of how the table looks like	
+	+--------------------------------+
+	|	0	|	2	|	*	| nbr 1  |	
+	+-------+-------+-------+--------+
+	|	3	|	1	|	0	| nbr 3  |
+	+--------------------------------+
+
+	This table shows that the node has two neighbors, node 1 and 3. And the distance from node 1 to node 1-3 is 0,2 and infinity.
+	The distance from node 3 to node 1-3 is 3,1,0.
+
+	*/
 
 	//--------------------------------------------------
 	public RouterNode(int ID, RouterSimulator sim, int[] costs) {
@@ -53,9 +71,8 @@ public class RouterNode {
 			for(int j=0; j<RouterSimulator.NUM_NODES; j++){
 				cmp = nbrDistanceTable[i][myID]+nbrDistanceTable[i][j];
 				if(cmp < costsnbr[j]){
-					costsnbr[j] = cmp;
-					//Updating Route here
-					routeNbr[j] = i;
+					costsnbr[j] = cmp; //Updates cost
+					routeNbr[j] = nbrDistanceTable[i][RouterSimulator.NUM_NODES]; //Updates route
 					update = true;
 				}
 			}
@@ -97,6 +114,7 @@ public class RouterNode {
 
 	//--------------------------------------------------
 	public void updateLinkCost(int dest, int newcost) {
+		System.out.println("Link from [" + myID + "] to [" + dest + "] should update to " + newcost);
 	}
 
 	private void printTableHeader(){
