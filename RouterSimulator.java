@@ -17,7 +17,7 @@ public class RouterSimulator {
   public static final int NUM_NODES = 3;
   public static final int INFINITY = 999;
 
-  public static final boolean LINKCHANGES = true;
+  public static final boolean LINKCHANGES = false;
 
   public int TRACE = 3;             /* for debugging */
 
@@ -151,14 +151,16 @@ should not have to, and you defeinitely should not have to modify
 	{ myGUI.println("Panic: unknown event type\n"); System.exit(0); }
       
       if(TRACE > 2)
-	for(int i=0;i<NUM_NODES;i++)
-	  nodes[i].printDistanceTable();
+	     for(int i=0;i<NUM_NODES;i++)
+	     nodes[i].printDistanceTable();
 
     }
     
     
     myGUI.println("\nSimulator terminated at t="+clocktime+
 		       ", no packets in medium\n");
+    for(int i=0;i<NUM_NODES;i++)
+       nodes[i].printViaNbr();
   }
 
   public double getClocktime() {

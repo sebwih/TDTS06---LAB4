@@ -13,6 +13,7 @@ public class RouterNode {
 	private int nrNbr;
 	private int [][] nbrDistanceTable;
 	private RouterPacket packet;
+	private int iter = 0;
 
 	private boolean poisonReverse = false;
 	
@@ -35,7 +36,7 @@ public class RouterNode {
 	The distance from node 3 to node 1-3 is 3,1,0.
 
 	----------------------
-	toNbr [row][col]
+	viaNbr [row][col]
 	----------------------
 	Two dimentional array that contains the costs to each all other nodes via all other nodes. The best value will be choosen from this array.
 
@@ -67,70 +68,130 @@ public class RouterNode {
 
 		this.viaNbr = new int[RouterSimulator.NUM_NODES+1][nrNbr];
 
-
-		initToNbrArray();
+		initViaNbrArray();
 		initrouteNbr();
 		initNbrArray();
-//		this.printDistanceTable();
 		updateNbr();
+	}
 
-		System.out.println("toNbr for node " + myID);
+	public void printViaNbr(){
+		System.out.println("viaNbr for node " + myID);
 		System.out.println("------------------");
-		for(int i=0; i<RouterSimulator.NUM_NODES; i++){
+		for(int i=0; i<RouterSimulator.NUM_NODES+1; i++){
 			for(int j=0; j<nrNbr; j++){
 				if(i == 0){
-					System.out.print(toNbr[i][j] + " ");
+					System.out.print(viaNbr[i][j] + " ");
 				}
 				else{
-					System.out.print(toNbr[i][j] + " ");
+					System.out.print(viaNbr[i][j] + " ");
 				}
 			}
 			System.out.println();
 		}
 		System.out.println();
-
+		System.out.println("costsnbr: " + Arrays.toString(costsnbr) + "\n");
 	}
 
 	//--------------------------------------------------
 	public void recvUpdate(RouterPacket pkt) {
 		//myGUI.println("Got update from " + pkt.sourceid + ": " + Arrays.toString(pkt.mincost) + " at time " + sim.getClocktime());
 
-		int index = getNbrIndex(pkt.sourceid);
+		int destIndex; 
+		int routeIndex;
 
-		for(int j=0; j<RouterSimulator.NUM_NODES; j++){
-			this.nbrDistanceTable[index][j] = pkt.mincost[j];
+		for(int i=0; i<RouterSimulator.NUM_NODES; i++){
+			if(i != myID && i != pkt.sourceid){
+				destIndex = getIndexDest(i);
+				routeIndex = getIndexRoute(pkt.sourceid);
+
+				viaNbr[destIndex][routeIndex] = pkt.mincost[i] + getMin(pkt.sourceid);
+			}
 		}
 
-		if(poisonReverse && canHasInf(pkt.sourceid)){
+		if(needUpdate()){
+			updateRoute();
+			updateNbr();
+		}
+
+
+		/*if(poisonReverse && canHasInf(pkt.sourceid)){
 			resetCosts(pkt.sourceid);
 			updateNbr();
 		}
 
 		else if(updateRoute(pkt.sourceid)){
 			updateNbr();
-		}
+		}*/
 
 	}
 
-	public boolean updateRoute(int sourceid){
+	public int getMin(int dest){
+
+		int destIndex = getIndexDest(dest);
+		int min = viaNbr[destIndex][0];
+
+		for(int i=1; i<nrNbr; i++){
+			if(viaNbr[destIndex][i] < min){
+				min = viaNbr[destIndex][i];
+			}
+		}
+		return min;
+	}
+
+	//Returns the  best route to a given destination. 
+	public int getRoute(int dest){
+
+		int destIndex = getIndexDest(dest);
+		int temp = viaNbr[destIndex][0];
+		int route = 0;
+
+		for(int i=1; i<nrNbr; i++){
+			if(viaNbr[destIndex][i] < temp){
+				route = i;
+			}
+		}
+
+		route = viaNbr[0][route];
+
+		return route;
+	}
+
+	public boolean needUpdate(){
 		
 		int cmp;
-		boolean update = false;
-
-		int index = getNbrIndex(sourceid);
 
 			for(int j=0; j<RouterSimulator.NUM_NODES; j++){
-				cmp = nbrDistanceTable[index][myID]+nbrDistanceTable[index][j];
-
-				if(cmp < costsnbr[j]){
-					costsnbr[j] = cmp; //Updates cost
-					routeNbr[j] = nbrDistanceTable[index][RouterSimulator.NUM_NODES]; //Updates route
-					update = true;
+				if(j != myID){
+					cmp = getMin(j);
+					System.out.println("[" + myID + "] Need update: cmp: " + cmp + " costsnbr: " + costsnbr[j] + " at time " + sim.getClocktime());
+					if(cmp > costsnbr[j] || cmp < costsnbr[j]){
+						return true;
+					}
 				}
-				
 			}
 
-		return update;
+		return false;
+	}
+
+	public void updateRoute(){
+		
+		int cmp;
+		System.out.println("[" + myID + "] Before update: " + Arrays.toString(costsnbr) + " at time " + sim.getClocktime());
+
+
+		for(int j=0; j<RouterSimulator.NUM_NODES; j++){
+				
+			if(j != myID){
+				costsnbr[j] = getMin(j);
+				routeNbr[j] = getRoute(j);
+			}
+			else{
+				costsnbr[j] = 0;
+				routeNbr[j] = j;
+			}
+		}
+
+		System.out.println("[" + myID + "] After update: " + Arrays.toString(costsnbr) + " at time " + sim.getClocktime());
 	}
 
 	private int getNbrIndex(int sourceid){
@@ -167,7 +228,7 @@ public class RouterNode {
 
 	private void updateNbr() {
 		for(int i=0; i<nrNbr; i++){
-			packet = new RouterPacket(myID,nbrDistanceTable[i][RouterSimulator.NUM_NODES],costsnbr);
+			packet = new RouterPacket(myID,viaNbr[0][i],costsnbr);
 			sendUpdate(packet);
 		}
 	}
@@ -181,7 +242,6 @@ public class RouterNode {
 
 		myGUI.println("Distance Table:");
 		printTableHeader();
-		printNbr();
 		myGUI.println("\n");
 		myGUI.println("Our distance vector and routes:");
 		printTableHeader();
@@ -193,13 +253,25 @@ public class RouterNode {
 	//--------------------------------------------------
 	public void updateLinkCost(int dest, int newcost) {
 		if(poisonReverse){
+			
+			
+
+			
 			orginalCosts[dest] = newcost;
 			routeInfCheck(dest);
 		}
 		else{
-			costsnbr[dest] = newcost;
+
+			int destIndex = getIndexDest(dest);
+			int routeIndex = getIndexRoute(dest);
+
+			viaNbr[destIndex][routeIndex] = newcost;
+			printViaNbr();
+			if(needUpdate()){
+				updateRoute();
+				updateNbr();
+			}
 		}
-		updateNbr();
 	}
 
 	private void routeInfCheck(int dest){
@@ -291,25 +363,57 @@ public class RouterNode {
 		}
 	}
 
-	private void initToNbrArray(){
+	private void initViaNbrArray(){
 
 		int temp = 0;
+		int dest;
+		int route;
 
 		//inserts the neighbors number
 		for(int i=0; i<RouterSimulator.NUM_NODES; i++){
 			if(this.costsnbr[i] != RouterSimulator.INFINITY 
 					&& i != this.myID){
-				this.toNbr[0][temp] = i;
+				this.viaNbr[0][temp] = i;
 				temp++;
 			}
 		}
 
+		//inserts inf on all places
 		for(int i=1; i<RouterSimulator.NUM_NODES+1; i++){
 			for(int j=0; j<nrNbr; j++){
-				this.toNbr[i][j] = RouterSimulator.INFINITY;			
+				viaNbr[i][j] = RouterSimulator.INFINITY;
 			}
 		}
 
+		//inserts the costs
+		for(int i=0; i<RouterSimulator.NUM_NODES; i++){
+			
+			dest = getIndexDest(i);
+			route = getIndexRoute(i);
+
+			if(dest != -1 && route != -1){
+				viaNbr[dest][route] = costsnbr[i];				
+			}	
+		}
+
+	}
+
+	private int getIndexDest(int dest){
+		for(int i=1; i<RouterSimulator.NUM_NODES+1; i++){
+			if(i-1 == dest && (i-1) != myID){
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	private int getIndexRoute(int routeVia){
+		for(int i=0; i<nrNbr; i++){
+			if(viaNbr[0][i] == routeVia){
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private void resetCosts(int sourceid){

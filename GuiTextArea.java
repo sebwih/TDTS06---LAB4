@@ -11,7 +11,7 @@ public class GuiTextArea {
 	JFrame frame = new JFrame(title);
 	frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	
-	myArea = new JTextArea(20, 75);
+	myArea = new JTextArea(20, 45);
 	myArea.setEditable(false);
 	JScrollPane scrollPane = 
 	    new JScrollPane(myArea,
